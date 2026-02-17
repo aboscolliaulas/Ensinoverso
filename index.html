@@ -15,7 +15,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #050505;
+            background-color: #000000;
             height: 100vh;
             width: 100vw;
             position: relative;
@@ -28,36 +28,22 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: url('https://images.unsplash.com/photo-1544476915-ed1370594142?q=80&w=2560&auto=format&fit=crop') no-repeat center center fixed;
-            background-size: cover;
-            opacity: 1; 
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
             z-index: -2;
         }
 
-        body::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%);
-            z-index: -1;
-            pointer-events: none;
-        }
-
         .glass {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(10, 10, 10, 0.7);
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .dock-glass {
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(10, 10, 10, 0.85);
             backdrop-filter: blur(30px);
             -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         @keyframes fadeIn {
@@ -70,7 +56,7 @@
         }
 
         .text-shadow-strong {
-            text-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            text-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
         }
 
         ::-webkit-scrollbar {
@@ -80,23 +66,23 @@
             background: transparent;
         }
         ::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.2);
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
     "firebase/": "https://esm.sh/firebase@^12.9.0/",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
   }
 }
 </script>
