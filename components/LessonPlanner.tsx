@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { generateLessonPlanFromContent, generateLessonQuestions, ContentPart } from '../services/geminiService';
 import { dbService } from '../services/firebase';
@@ -555,7 +554,7 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
 
       {lessonToDelete && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
-          <div className="w-full max-w-md bg-white rounded-[3rem] p-12 text-center space-y-8 shadow-2xl">
+          <div className="w-full max-w-md bg-white rounded-[3.5rem] p-12 text-center space-y-8 shadow-2xl">
              <div className="w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner"><i className="fa-solid fa-trash-can"></i></div>
              <div className="space-y-2">
                 <h3 className="text-3xl font-black text-gray-900 tracking-tight">Excluir Aula?</h3>
