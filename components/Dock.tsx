@@ -12,7 +12,7 @@ interface DockProps {
 const Dock: React.FC<DockProps> = ({ currentView, setView, userRole, onLogout }) => {
   const menuItems = useMemo(() => {
     const allItems = [
-      { id: AppView.DASHBOARD, icon: 'fa-house', label: 'Início', color: 'bg-blue-600', roles: ['administrador', 'professor', 'estudante'] },
+      { id: AppView.DASHBOARD, icon: 'fa-house', label: 'Início', color: 'bg-blue-600', roles: ['administrador'] },
       { id: AppView.CLASSES, icon: 'fa-users', label: 'Turmas', color: 'bg-emerald-600', roles: ['administrador'] },
       { id: AppView.LESSON_PLANNER, icon: 'fa-book-open', label: 'Aulas', color: 'bg-indigo-600', roles: ['administrador', 'professor', 'estudante'] },
       { id: AppView.SETTINGS, icon: 'fa-gear', label: 'Config', color: 'bg-gray-700', roles: ['administrador'] },

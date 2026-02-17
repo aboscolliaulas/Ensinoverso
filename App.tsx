@@ -29,13 +29,17 @@ const App: React.FC = () => {
           const userData = await dbService.getById<AppUser>('users', firebaseUser.uid);
           if (userData) {
             setCurrentUser(userData);
+            // Redireciona Professores e Alunos direto para Aulas
+            if (userData.role === 'professor' || userData.role === 'estudante') {
+              setCurrentView(AppView.LESSON_PLANNER);
+            }
           } else {
             setCurrentUser({
               id: firebaseUser.uid,
               name: firebaseUser.displayName || 'Usuário',
               email: firebaseUser.email || '',
               role: 'professor',
-              approved: true,
+              approved: false,
               linkedClassIds: []
             });
           }
@@ -138,6 +142,40 @@ const App: React.FC = () => {
     );
   }
 
+  if (!currentUser.approved) {
+    return (
+      <div className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-center bg-black">
+        <div className="relative z-10 w-full max-w-lg px-8 text-center space-y-12 animate-desktop-in">
+          <div className="w-32 h-32 bg-indigo-600/20 rounded-[3rem] border border-indigo-500/30 flex items-center justify-center mx-auto text-indigo-400 text-5xl shadow-[0_0_50px_rgba(79,70,229,0.2)]">
+            <i className="fa-solid fa-hourglass-half animate-pulse"></i>
+          </div>
+          
+          <div className="space-y-4">
+            <h1 className="text-5xl font-black text-white tracking-tighter uppercase">Acesso Pendente</h1>
+            <p className="text-xl text-white/40 font-medium leading-relaxed">
+              Olá, <span className="text-indigo-400 font-black">{currentUser.name}</span>. <br/>
+              Sua conta foi criada com sucesso, mas está <span className="text-white">aguardando liberação do administrador</span>.
+            </p>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-xl">
+             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-4">Próximos Passos</p>
+             <p className="text-sm text-white/60 font-medium italic">
+               "Nossa equipe de coordenação analisará seu cadastro em breve para definir seu nível de acesso e turmas vinculadas."
+             </p>
+          </div>
+
+          <button 
+            onClick={handleLogout}
+            className="w-full py-6 bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest border border-white/10 transition-all active:scale-95"
+          >
+            Sair da Conta
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-screen h-screen overflow-hidden flex flex-col items-center text-gray-900">
       <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 ${isIntegratedView ? 'scale-90 opacity-20 blur-sm' : 'opacity-100'}`}>
@@ -146,7 +184,7 @@ const App: React.FC = () => {
 
       {isIntegratedView && (
         <div className="relative z-10 w-full h-full overflow-y-auto pt-10 pb-32 px-8 flex justify-center items-start animate-desktop-in custom-scrollbar">
-          {currentView === AppView.DASHBOARD && (
+          {currentView === AppView.DASHBOARD && currentUser.role === 'administrador' && (
             <Dashboard 
               setView={setCurrentView} 
               classesCount={classes.length} 
