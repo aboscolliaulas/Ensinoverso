@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { AppView, UserRole } from '../types';
 
@@ -15,6 +14,8 @@ const Dock: React.FC<DockProps> = ({ currentView, setView, userRole, onLogout })
       { id: AppView.DASHBOARD, icon: 'fa-house', label: 'Início', color: 'bg-blue-600', roles: ['administrador', 'professor', 'estudante'] },
       { id: AppView.CLASSES, icon: 'fa-users', label: 'Turmas', color: 'bg-emerald-600', roles: ['administrador'] },
       { id: AppView.LESSON_PLANNER, icon: 'fa-book-open', label: 'Aulas', color: 'bg-indigo-600', roles: ['administrador', 'professor', 'estudante'] },
+      { id: AppView.VISUALS, icon: 'fa-palette', label: 'IA Visual', color: 'bg-pink-600', roles: ['professor'] },
+      { id: AppView.QUIZ_MAKER, icon: 'fa-list-check', label: 'IA Quiz', color: 'bg-purple-600', roles: ['professor'] },
       { id: AppView.SETTINGS, icon: 'fa-gear', label: 'Config', color: 'bg-gray-700', roles: ['administrador'] },
     ];
     return allItems.filter(item => item.roles.includes(userRole));

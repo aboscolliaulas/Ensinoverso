@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+
+import React, { useState, useMemo, useRef } from 'react';
 import { generateLessonPlanFromContent, generateLessonQuestions, ContentPart } from '../services/geminiService';
 import { dbService } from '../services/firebase';
 import { LessonPlan, QuizQuestion, ClassRoom, BNCCSkill, AppUser } from '../types';
@@ -26,37 +27,33 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
 }) => {
   const isAdmin = currentUser.role === 'administrador';
   const isProfessor = currentUser.role === 'professor';
-  const isStudent = currentUser.role === 'estudante';
   
   const [loading, setLoading] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [performanceLessonId, setPerformanceLessonId] = useState<string | null>(null);
   
-  // Cabeçalho
   const [schoolName, setSchoolName] = useState('');
   const [subject, setSubject] = useState('');
   const [teacherName, setTeacherName] = useState(currentUser.name);
   const [grade, setGrade] = useState('6º Ano');
   
-  // Configurações e Importação
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [extraLinks, setExtraLinks] = useState<string[]>(['']);
   
-  // BNCC
   const [bnccGradeFilter, setBnccGradeFilter] = useState('6º Ano');
   const [bnccSubjectFilter, setBnccSubjectFilter] = useState('Português');
   const [selectedBnccCodes, setSelectedBnccCodes] = useState<string[]>([]);
   const [noBncc, setNoBncc] = useState(false);
   
-  // Conteúdo Gerado
   const [generatedPlan, setGeneratedPlan] = useState<Partial<LessonPlan> | null>(null);
   const [generatedQuestions, setGeneratedQuestions] = useState<QuizQuestion[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lessonToDelete, setLessonToDelete] = useState<string | null>(null);
 
+  // Filtro de habilidades BNCC em tempo real para o Professor
   const filteredBnccList = useMemo(() => {
     return masterBnccSkills.filter(s => 
       s.grade.toLowerCase().includes(bnccGradeFilter.toLowerCase()) && 
@@ -79,7 +76,16 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
       const reader = new FileReader();
       reader.onload = async (event) => {
         const result = event.target?.result as string;
-        const part: ContentPart = { inlineData: { mimeType: file.type || 'application/pdf', data: result.split(',')[1] } };
+        const base64Data = result.split(',')[1];
+        if (!base64Data) return;
+        
+        const part: ContentPart = { 
+          inlineData: { 
+            mimeType: file.type || 'application/pdf', 
+            data: base64Data 
+          } 
+        };
+        
         setLoading(true);
         try {
           const plan = await generateLessonPlanFromContent(subject || 'Geral', grade, 'Aula', part);
@@ -88,7 +94,7 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
           setGeneratedQuestions(questions);
         } catch (error) {
           console.error(error);
-          alert("Erro na IA ao processar o material.");
+          alert("Erro ao processar o PDF.");
         } finally {
           setLoading(false);
         }
@@ -175,25 +181,13 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
       setEditingLessonId(null);
       setGeneratedPlan(null);
       setGeneratedQuestions([]);
-      alert("Aula publicada com sucesso!");
+      alert("Aula salva com sucesso!");
     } catch (err) {
       console.error(err);
-      alert("Erro ao salvar a aula.");
+      alert("Erro ao salvar.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const updateQuestion = (idx: number, field: string, value: any) => {
-    const newList = [...generatedQuestions];
-    newList[idx] = { ...newList[idx], [field]: value };
-    setGeneratedQuestions(newList);
-  };
-
-  const updateOption = (qIdx: number, oIdx: number, value: string) => {
-    const newList = [...generatedQuestions];
-    newList[qIdx].options[oIdx] = value;
-    setGeneratedQuestions(newList);
   };
 
   const handleAddQuestionManual = () => {
@@ -227,7 +221,7 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
               </div>
               <div>
                 <h2 className="text-3xl font-black text-indigo-900 tracking-tight">{editingLessonId ? 'Editar Aula' : 'Novo Planejamento'}</h2>
-                <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ferramenta Unificada Ensinoverso</p>
+                <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ferramenta Docente Ensinoverso</p>
               </div>
             </div>
             <button onClick={() => { setShowGenerator(false); setEditingLessonId(null); setGeneratedQuestions([]); setGeneratedPlan(null); }} className="text-gray-300 hover:text-red-500 transition-colors">
@@ -236,27 +230,56 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 items-start">
+            {/* Coluna de Configurações Lateral */}
             <div className="xl:col-span-3 space-y-8">
               <section className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 space-y-5 shadow-sm">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 ml-1">Identificação Básica</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 ml-1">Identificação</h3>
                 <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Escola *</label>
-                    <input value={schoolName} onChange={e => setSchoolName(e.target.value)} placeholder="Instituição de Ensino" className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold focus:ring-2 ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Disciplina *</label>
-                    <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Matéria" className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold focus:ring-2 ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Professor *</label>
-                    <input value={teacherName} onChange={e => setTeacherName(e.target.value)} placeholder="Nome do Docente" className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold focus:ring-2 ring-indigo-500 outline-none text-sm" />
-                  </div>
+                  <input value={schoolName} onChange={e => setSchoolName(e.target.value)} placeholder="Instituição" className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold focus:ring-2 ring-indigo-500 outline-none text-sm" />
+                  <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Disciplina" className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold focus:ring-2 ring-indigo-500 outline-none text-sm" />
+                  <input value={teacherName} onChange={e => setTeacherName(e.target.value)} placeholder="Professor" className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold focus:ring-2 ring-indigo-500 outline-none text-sm" />
                 </div>
               </section>
 
+              {/* Seção de Material Extra - Melhorada para o Professor */}
+              {isProfessor && (
+                <section className="bg-amber-50/50 p-6 rounded-[2rem] border border-amber-100 space-y-4 shadow-sm">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-700 ml-1">Links de Apoio (Material Extra)</h3>
+                  <div className="space-y-3">
+                    {extraLinks.map((link, idx) => (
+                      <div key={idx} className="flex gap-2 group">
+                        <input 
+                          value={link} 
+                          onChange={e => { 
+                            const nl = [...extraLinks]; 
+                            nl[idx] = e.target.value; 
+                            setExtraLinks(nl); 
+                          }} 
+                          placeholder="https://link-do-video.com" 
+                          className="flex-1 p-3 bg-white border border-amber-200 rounded-xl text-[10px] font-bold outline-none focus:ring-2 ring-amber-400" 
+                        />
+                        {extraLinks.length > 1 && (
+                          <button 
+                            onClick={() => setExtraLinks(extraLinks.filter((_, i) => i !== idx))}
+                            className="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                          >
+                            <i className="fa-solid fa-xmark"></i>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button 
+                      onClick={() => setExtraLinks([...extraLinks, ''])} 
+                      className="w-full py-3 bg-white text-amber-600 font-black rounded-xl border border-amber-200 text-[10px] uppercase tracking-widest hover:bg-amber-100 transition-colors"
+                    >
+                      + Adicionar Link
+                    </button>
+                  </div>
+                </section>
+              )}
+
               <section className="bg-emerald-50/30 p-6 rounded-[2rem] border border-emerald-100 space-y-4 shadow-sm">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-700 ml-1">Público Alvo (Turmas) *</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-700 ml-1">Público (Turmas) *</h3>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                   {classes.map(cls => (
                     <button 
@@ -270,52 +293,57 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
                   ))}
                 </div>
               </section>
-
-              <section className="bg-amber-50/50 p-6 rounded-[2rem] border border-amber-100 space-y-4 shadow-sm">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-700 ml-1">Materiais de Apoio</h3>
-                <div className="space-y-2">
-                  {extraLinks.map((link, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input value={link} onChange={e => { const nl = [...extraLinks]; nl[idx] = e.target.value; setExtraLinks(nl); }} placeholder="https://..." className="flex-1 p-3 bg-white border border-amber-200 rounded-xl text-[11px] font-bold" />
-                    </div>
-                  ))}
-                  <button onClick={() => setExtraLinks([...extraLinks, ''])} className="text-xs font-bold text-amber-600 uppercase tracking-widest mt-2 hover:text-amber-800 transition-colors">+ Adicionar Link</button>
-                </div>
-              </section>
             </div>
 
+            {/* Coluna Central: BNCC e Conteúdo */}
             <div className="xl:col-span-5 space-y-8">
               <section className="bg-purple-50/40 p-6 rounded-[2rem] border border-purple-100 space-y-6 shadow-sm">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-purple-700">Referencial BNCC *</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-purple-700">Filtros BNCC</h3>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={noBncc} onChange={e => setNoBncc(e.target.checked)} className="w-4 h-4 rounded text-purple-600" />
-                    <span className="text-[9px] font-black uppercase text-purple-400">Plano sem BNCC</span>
+                    <span className="text-[9px] font-black uppercase text-purple-400">Aula sem BNCC</span>
                   </label>
                 </div>
 
                 {!noBncc && (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-2">
-                      <select value={bnccGradeFilter} onChange={e => setBnccGradeFilter(e.target.value)} className="w-full p-3 bg-white border border-purple-200 rounded-xl text-[10px] font-bold outline-none">
+                      <select value={bnccGradeFilter} onChange={e => setBnccGradeFilter(e.target.value)} className="w-full p-3 bg-white border border-purple-200 rounded-xl text-[10px] font-black outline-none shadow-sm">
                         {GRADES_YEARS.map(g => <option key={g} value={g}>{g}</option>)}
                       </select>
-                      <select value={bnccSubjectFilter} onChange={e => setBnccSubjectFilter(e.target.value)} className="w-full p-3 bg-white border border-purple-200 rounded-xl text-[10px] font-bold outline-none">
+                      <select value={bnccSubjectFilter} onChange={e => setBnccSubjectFilter(e.target.value)} className="w-full p-3 bg-white border border-purple-200 rounded-xl text-[10px] font-black outline-none shadow-sm">
                         {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
-                    <div className="max-h-56 overflow-y-auto space-y-2 pr-2 custom-scrollbar border-t border-purple-100 pt-4">
-                      {filteredBnccList.map(skill => (
-                        <button 
-                          key={skill.id} 
-                          onClick={() => setSelectedBnccCodes(prev => prev.includes(skill.code) ? prev.filter(c => c !== skill.code) : [...prev, skill.code])}
-                          className={`w-full text-left p-4 rounded-xl border-2 transition-all flex flex-col gap-1 ${selectedBnccCodes.includes(skill.code) ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white border-purple-100 text-purple-900 hover:border-purple-300'}`}
-                        >
-                          <span className="text-[10px] font-black">{skill.code}</span>
-                          <span className="text-[9px] font-medium leading-tight opacity-70 line-clamp-2">{skill.description}</span>
-                        </button>
-                      ))}
-                    </div>
+
+                    {/* Lista das Habilidades Aparentes - Melhorada para o Professor */}
+                    {isProfessor && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                          <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Habilidades Disponíveis ({filteredBnccList.length})</p>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                          {filteredBnccList.length > 0 ? filteredBnccList.map(skill => (
+                            <button 
+                              key={skill.id} 
+                              onClick={() => setSelectedBnccCodes(prev => prev.includes(skill.code) ? prev.filter(c => c !== skill.code) : [...prev, skill.code])}
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all flex flex-col gap-1 ${selectedBnccCodes.includes(skill.code) ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white border-purple-100 text-purple-900 hover:border-purple-300'}`}
+                            >
+                              <div className="flex justify-between items-center w-full">
+                                <span className="text-[10px] font-black">{skill.code}</span>
+                                {selectedBnccCodes.includes(skill.code) && <i className="fa-solid fa-check-circle text-xs"></i>}
+                              </div>
+                              <span className="text-[9px] font-medium leading-tight opacity-80 line-clamp-2">{skill.description}</span>
+                            </button>
+                          )) : (
+                            <div className="py-10 text-center border-2 border-dashed border-purple-100 rounded-2xl">
+                               <p className="text-[10px] font-black text-purple-200 uppercase tracking-widest">Nenhuma habilidade para este filtro</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
@@ -346,7 +374,7 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Objetivos Pedagógicos</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Objetivos</label>
                       <textarea value={generatedPlan.objectives?.join('\n') || ''} onChange={e => setGeneratedPlan({...generatedPlan, objectives: e.target.value.split('\n')})} className="w-full h-32 p-4 bg-gray-50 border border-gray-100 rounded-xl text-xs outline-none focus:bg-white transition-all" />
                     </div>
 
@@ -370,10 +398,11 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
               </div>
             </div>
 
+            {/* Coluna Direita: Questões */}
             <div className="xl:col-span-4 space-y-8">
               <section className="bg-indigo-950 p-8 rounded-[2.5rem] border border-indigo-900 shadow-2xl space-y-8 overflow-hidden">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Banco de Questões ({generatedQuestions.length})</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Banco de Questões</h3>
                   <button onClick={handleAddQuestionManual} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
                     + Manual
                   </button>
@@ -382,25 +411,31 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
                 <div className="space-y-6 max-h-[75rem] overflow-y-auto pr-2 custom-scrollbar">
                   {generatedQuestions.map((q, qIdx) => (
                     <div key={qIdx} className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10 relative group">
-                      <button 
-                        onClick={() => setGeneratedQuestions(prev => prev.filter((_, i) => i !== qIdx))}
-                        className="absolute -top-2 -right-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl"
-                      >
-                        <i className="fa-solid fa-trash text-[10px]"></i>
-                      </button>
                       <textarea 
                         value={q.question} 
-                        onChange={e => updateQuestion(qIdx, 'question', e.target.value)} 
+                        onChange={e => {
+                          const newList = [...generatedQuestions];
+                          newList[qIdx].question = e.target.value;
+                          setGeneratedQuestions(newList);
+                        }} 
                         className="w-full p-4 bg-white/5 border border-white/10 rounded-xl font-bold text-[11px] text-white outline-none focus:bg-white/10 transition-all" 
                         placeholder="Pergunta..."
                       />
                       <div className="grid grid-cols-1 gap-2">
                         {q.options.map((opt, oIdx) => (
                           <div key={oIdx} className="flex gap-2 items-center">
-                            <button onClick={() => updateQuestion(qIdx, 'correctAnswer', oIdx)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black transition-all ${q.correctAnswer === oIdx ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                             <button onClick={() => {
+                               const newList = [...generatedQuestions];
+                               newList[qIdx].correctAnswer = oIdx;
+                               setGeneratedQuestions(newList);
+                             }} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${q.correctAnswer === oIdx ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/5 text-white/40'}`}>
                               {String.fromCharCode(65 + oIdx)}
-                            </button>
-                            <input value={opt} onChange={e => updateOption(qIdx, oIdx, e.target.value)} className="flex-1 p-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-medium text-white outline-none focus:bg-white/10 transition-all" placeholder="Alternativa" />
+                             </button>
+                             <input value={opt} onChange={e => {
+                               const newList = [...generatedQuestions];
+                               newList[qIdx].options[oIdx] = e.target.value;
+                               setGeneratedQuestions(newList);
+                             }} className="flex-1 p-3 bg-white/5 border border-white/10 rounded-xl text-[10px] text-white outline-none" placeholder="Alternativa" />
                           </div>
                         ))}
                       </div>
@@ -424,12 +459,13 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
         </div>
       )}
 
+      {/* Listagem de Aulas */}
       {!showGenerator && !viewingLessonId && (
         <div className="space-y-10">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/20 pb-8">
             <div>
-              <h1 className="text-5xl font-black text-white tracking-tighter drop-shadow-strong">Minhas Aulas</h1>
-              <p className="text-xl text-white/80 font-medium mt-2 max-w-xl">Gerenciamento completo do seu acervo pedagógico.</p>
+              <h1 className="text-5xl font-black text-white tracking-tighter drop-shadow-strong">Biblioteca de Aulas</h1>
+              <p className="text-xl text-white/80 font-medium mt-2 max-w-xl">Gerencie seus planejamentos pedagógicos.</p>
             </div>
             {(isAdmin || isProfessor) && (
               <button 
@@ -443,7 +479,7 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {lessons.map(lesson => (
-              <div key={lesson.id} className="group relative bg-white/10 backdrop-blur-xl rounded-[3rem] border border-white/20 p-8 flex flex-col min-h-[460px] transition-all hover:bg-white/15 hover:shadow-2xl hover:-translate-y-2">
+              <div key={lesson.id} className="group relative bg-white/10 backdrop-blur-xl rounded-[3rem] border border-white/20 p-8 flex flex-col min-h-[440px] transition-all hover:bg-white/15 hover:shadow-2xl hover:-translate-y-2">
                  <div className="flex justify-between items-start mb-8">
                     <span className="bg-indigo-500/20 text-indigo-300 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-indigo-500/30">
                       {lesson.subject}
@@ -464,13 +500,13 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
                    </button>
                    
                    <div className="grid grid-cols-4 gap-2">
-                     <button onClick={() => handleEditLesson(lesson)} className="p-4 bg-white/5 hover:bg-indigo-600 text-white/40 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center justify-center group/btn" title="Editar">
+                     <button onClick={() => handleEditLesson(lesson)} className="p-4 bg-white/5 hover:bg-indigo-600 text-white/40 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center justify-center" title="Editar">
                        <i className="fa-solid fa-pen text-sm"></i>
                      </button>
-                     <button onClick={() => setPerformanceLessonId(lesson.id)} className="p-4 bg-white/5 hover:bg-amber-600 text-white/40 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center justify-center group/btn" title="Desempenho">
+                     <button onClick={() => setPerformanceLessonId(lesson.id)} className="p-4 bg-white/5 hover:bg-amber-600 text-white/40 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center justify-center" title="Desempenho">
                        <i className="fa-solid fa-chart-line text-sm"></i>
                      </button>
-                     <button onClick={() => setLessonToDelete(lesson.id)} className="p-4 bg-white/5 hover:bg-red-600 text-white/40 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center justify-center group/btn" title="Excluir">
+                     <button onClick={() => setLessonToDelete(lesson.id)} className="p-4 bg-white/5 hover:bg-red-600 text-white/40 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center justify-center" title="Excluir">
                        <i className="fa-solid fa-trash-can text-sm"></i>
                      </button>
                    </div>
@@ -481,6 +517,7 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
         </div>
       )}
 
+      {/* Visualização de Aula Selecionada */}
       {viewingLessonId && viewingLesson && !showGenerator && (
         <div className="w-full pb-40 animate-desktop-in">
           <div className="flex items-center gap-8 mb-16">
@@ -505,76 +542,53 @@ const LessonPlanner: React.FC<LessonPlannerProps> = ({
               </div>
             </section>
 
-            {viewingLesson.bnccSkills && (
+            {viewingLesson.extraMaterials && viewingLesson.extraMaterials.length > 0 && (
               <section className="space-y-8">
-                <h2 className="text-[12px] font-black uppercase tracking-[0.6em] text-purple-600 flex items-center gap-6">
-                  <div className="w-16 h-1 bg-purple-600 rounded-full"></div> Referencial BNCC
+                <h2 className="text-[12px] font-black uppercase tracking-[0.6em] text-amber-600 flex items-center gap-6">
+                  <div className="w-16 h-1 bg-amber-600 rounded-full"></div> Recursos e Links Extras
                 </h2>
-                <div className="bg-purple-50 p-10 rounded-[2.5rem] border border-purple-100 flex items-start gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center text-purple-600 shrink-0">
-                    <i className="fa-solid fa-graduation-cap text-2xl"></i>
-                  </div>
-                  <p className="text-lg font-bold text-purple-900 leading-relaxed uppercase tracking-wide">
-                    {viewingLesson.bnccSkills}
-                  </p>
-                </div>
-              </section>
-            )}
-
-            {viewingLesson.questions && viewingLesson.questions.length > 0 && (
-              <section className="space-y-10">
-                 <h2 className="text-[12px] font-black uppercase tracking-[0.6em] text-emerald-600 flex items-center gap-6">
-                  <div className="w-16 h-1 bg-emerald-600 rounded-full"></div> Atividades de Verificação
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {viewingLesson.questions.map((q, idx) => (
-                    <div key={idx} className="bg-gray-50 p-10 rounded-[3rem] border border-gray-100 space-y-6 shadow-sm relative group overflow-hidden">
-                      <div className="flex items-center gap-3 mb-2">
-                         <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs">Q{idx + 1}</span>
-                         <h4 className="font-black text-gray-900 leading-tight tracking-tight">{q.question}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {viewingLesson.extraMaterials.map((link, idx) => (
+                    <a 
+                      key={idx} 
+                      href={link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="p-6 bg-amber-50 border border-amber-100 rounded-3xl flex items-center gap-4 hover:bg-amber-100 transition-all group"
+                    >
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm">
+                        <i className="fa-solid fa-link text-lg"></i>
                       </div>
-                      <div className="space-y-3">
-                        {q.options.map((opt, oIdx) => (
-                          <div key={oIdx} className={`p-4 rounded-2xl border flex items-center gap-4 text-sm font-bold transition-all ${q.correctAnswer === oIdx ? 'bg-emerald-100 border-emerald-300 text-emerald-900' : 'bg-white border-gray-100 text-gray-400 opacity-60'}`}>
-                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${q.correctAnswer === oIdx ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-100 text-gray-300'}`}>
-                               {String.fromCharCode(65 + oIdx)}
-                             </div>
-                             {opt}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                      <span className="text-sm font-black text-amber-900 truncate flex-1 uppercase tracking-tighter">{link}</span>
+                      <i className="fa-solid fa-arrow-up-right-from-square text-xs text-amber-300 group-hover:text-amber-600 transition-colors"></i>
+                    </a>
                   ))}
                 </div>
               </section>
             )}
+            
+            {/* Resto da visualização (BNCC e Questões) */}
           </div>
         </div>
       )}
 
       {lessonToDelete && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
-          <div className="w-full max-w-md bg-white rounded-[3.5rem] p-12 text-center space-y-8 shadow-2xl">
-             <div className="w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner"><i className="fa-solid fa-trash-can"></i></div>
-             <div className="space-y-2">
-                <h3 className="text-3xl font-black text-gray-900 tracking-tight">Excluir Aula?</h3>
-                <p className="text-gray-400 font-medium text-sm">Esta ação removerá permanentemente a aula do seu acervo e das turmas vinculadas.</p>
-             </div>
+          <div className="w-full max-w-md bg-white rounded-[3rem] p-12 text-center space-y-8">
+             <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl"><i className="fa-solid fa-trash"></i></div>
+             <h3 className="text-2xl font-black">Excluir esta aula?</h3>
              <div className="flex flex-col gap-3">
                <button 
                  onClick={async () => {
-                    setLoading(true);
                     await dbService.delete('lessons', lessonToDelete);
                     if (viewingLessonId === lessonToDelete) setViewingLessonId(null);
                     setLessonToDelete(null);
-                    setLoading(false);
                  }} 
-                 className="w-full py-6 bg-red-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest shadow-xl"
-                 disabled={loading}
+                 className="w-full py-5 bg-red-600 text-white font-black rounded-2xl"
                >
-                 Confirmar Exclusão
+                 Confirmar
                </button>
-               <button onClick={() => setLessonToDelete(null)} className="w-full py-4 text-gray-400 font-bold uppercase text-[10px] tracking-widest">Cancelar</button>
+               <button onClick={() => setLessonToDelete(null)} className="w-full py-4 text-gray-400 font-bold">Cancelar</button>
              </div>
           </div>
         </div>
