@@ -29,29 +29,21 @@ const App: React.FC = () => {
           const userData = await dbService.getById<AppUser>('users', firebaseUser.uid);
           if (userData) {
             setCurrentUser(userData);
-            // Redireciona Professores e Alunos direto para Aulas
+            // Direciona Professor e Aluno direto para a aba de Aulas
             if (userData.role === 'professor' || userData.role === 'estudante') {
               setCurrentView(AppView.LESSON_PLANNER);
             }
           } else {
-            setCurrentUser({
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'Usuário',
-              email: firebaseUser.email || '',
-              role: 'professor',
-              approved: false,
-              linkedClassIds: []
-            });
+            setCurrentUser(null);
           }
         } catch (err) {
-          console.error("Erro ao recuperar perfil do usuário:", err);
+          console.error("Erro ao recuperar perfil:", err);
         }
       } else {
         setCurrentUser(null);
       }
       setIsLoading(false);
     });
-
     return () => unsubscribeAuth();
   }, []);
 
@@ -63,9 +55,7 @@ const App: React.FC = () => {
         try {
           const data = await dbService.getCollection<T>(coll);
           if (data && data.length > 0) setter(data);
-        } catch (e) {
-          console.warn(`Aviso: Sem permissão para ler a coleção ${coll}.`);
-        }
+        } catch (e) { console.warn(`Sem acesso à coleção ${coll}.`); }
       };
 
       await Promise.all([
@@ -98,9 +88,13 @@ const App: React.FC = () => {
   const filteredLessons = useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.role === 'administrador') return allLessons;
+    
     if (currentUser.role === 'professor') {
+      // Professor visualiza apenas o que ele criou
       return allLessons.filter(l => l.ownerId === currentUser.id);
     }
+    
+    // Aluno visualiza apenas aulas vinculadas às suas turmas
     return allLessons.filter(l => 
       l.linkedClassIds?.some(cid => currentUser.linkedClassIds?.includes(cid))
     );
@@ -135,9 +129,7 @@ const App: React.FC = () => {
   if (!currentUser) {
     return (
       <div className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-center">
-        <div className="relative z-10 w-full flex justify-center px-6">
-          <AuthView onAuthSuccess={(user) => setCurrentUser(user)} />
-        </div>
+        <AuthView onAuthSuccess={(user) => setCurrentUser(user)} />
       </div>
     );
   }
@@ -149,28 +141,11 @@ const App: React.FC = () => {
           <div className="w-32 h-32 bg-indigo-600/20 rounded-[3rem] border border-indigo-500/30 flex items-center justify-center mx-auto text-indigo-400 text-5xl shadow-[0_0_50px_rgba(79,70,229,0.2)]">
             <i className="fa-solid fa-hourglass-half animate-pulse"></i>
           </div>
-          
           <div className="space-y-4">
             <h1 className="text-5xl font-black text-white tracking-tighter uppercase">Acesso Pendente</h1>
-            <p className="text-xl text-white/40 font-medium leading-relaxed">
-              Olá, <span className="text-indigo-400 font-black">{currentUser.name}</span>. <br/>
-              Sua conta foi criada com sucesso, mas está <span className="text-white">aguardando liberação do administrador</span>.
-            </p>
+            <p className="text-xl text-white/40 font-medium leading-relaxed">Olá, <span className="text-indigo-400 font-black">{currentUser.name}</span>. Sua conta está aguardando liberação do administrador.</p>
           </div>
-
-          <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-xl">
-             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-4">Próximos Passos</p>
-             <p className="text-sm text-white/60 font-medium italic">
-               "Nossa equipe de coordenação analisará seu cadastro em breve para definir seu nível de acesso e turmas vinculadas."
-             </p>
-          </div>
-
-          <button 
-            onClick={handleLogout}
-            className="w-full py-6 bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest border border-white/10 transition-all active:scale-95"
-          >
-            Sair da Conta
-          </button>
+          <button onClick={handleLogout} className="w-full py-6 bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest border border-white/10 transition-all">Sair da Conta</button>
         </div>
       </div>
     );
@@ -219,31 +194,8 @@ const App: React.FC = () => {
             />
           )}
           {currentView === AppView.SETTINGS && currentUser.role === 'administrador' && (
-            <SettingsView 
-              users={users} 
-              setUsers={setUsers} 
-              bnccSkills={bnccMasterList} 
-              setBnccSkills={setBnccMasterList} 
-              classes={classes}
-            />
+            <SettingsView users={users} setUsers={setUsers} bnccSkills={bnccMasterList} setBnccSkills={setBnccMasterList} classes={classes} />
           )}
-        </div>
-      )}
-
-      {currentView && !isIntegratedView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 md:p-12 bg-black/40 backdrop-blur-sm animate-desktop-in">
-          <div className="w-full max-w-6xl max-h-full overflow-hidden rounded-[2.5rem] shadow-[0_40px_120px_rgba(0,0,0,0.7)] flex flex-col glass border border-white/40">
-             <div className="p-12 overflow-y-auto custom-scrollbar">
-                {currentView === AppView.VISUALS && currentUser.role === 'administrador' && <VisualsGenerator />}
-                {currentView === AppView.QUIZ_MAKER && currentUser.role === 'administrador' && <QuizMaker />}
-                <button 
-                  onClick={() => setCurrentView(AppView.DASHBOARD)} 
-                  className="mt-8 bg-gray-100 text-gray-900 px-6 py-3 rounded-xl font-bold hover:bg-white transition-all w-fit uppercase text-[10px] tracking-widest"
-                >
-                  Voltar
-                </button>
-             </div>
-          </div>
         </div>
       )}
 

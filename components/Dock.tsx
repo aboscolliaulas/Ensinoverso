@@ -26,7 +26,7 @@ const Dock: React.FC<DockProps> = ({ currentView, setView, userRole, onLogout })
         {menuItems.map((item) => (
           <div key={item.id} className="flex flex-col items-center gap-1 group">
             <button
-              onClick={() => setView(currentView === item.id ? null : item.id)}
+              onClick={() => setView(item.id)}
               className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 shadow-xl ${
                 currentView === item.id 
                   ? `${item.color} text-white ring-2 ring-white` 
