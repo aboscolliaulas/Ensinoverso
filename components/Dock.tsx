@@ -12,7 +12,7 @@ interface DockProps {
 const Dock: React.FC<DockProps> = ({ currentView, setView, userRole, onLogout }) => {
   const menuItems = useMemo(() => {
     const allItems = [
-      { id: AppView.DASHBOARD, icon: 'fa-house', label: 'Início', color: 'bg-blue-600', roles: ['administrador'] },
+      { id: AppView.DASHBOARD, icon: 'fa-house', label: 'Início', color: 'bg-blue-600', roles: ['administrador', 'professor', 'estudante'] },
       { id: AppView.CLASSES, icon: 'fa-users', label: 'Turmas', color: 'bg-emerald-600', roles: ['administrador'] },
       { id: AppView.LESSON_PLANNER, icon: 'fa-book-open', label: 'Aulas', color: 'bg-indigo-600', roles: ['administrador', 'professor', 'estudante'] },
       { id: AppView.SETTINGS, icon: 'fa-gear', label: 'Config', color: 'bg-gray-700', roles: ['administrador'] },
@@ -26,7 +26,7 @@ const Dock: React.FC<DockProps> = ({ currentView, setView, userRole, onLogout })
         {menuItems.map((item) => (
           <div key={item.id} className="flex flex-col items-center gap-1 group">
             <button
-              onClick={() => setView(item.id)}
+              onClick={() => setView(currentView === item.id ? null : item.id)}
               className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 shadow-xl ${
                 currentView === item.id 
                   ? `${item.color} text-white ring-2 ring-white` 
